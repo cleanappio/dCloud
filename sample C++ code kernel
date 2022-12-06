@@ -1,0 +1,56 @@
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <vector>
+
+#include <cryptopp/aes.h>
+#include <cryptopp/filters.h>
+#include <cryptopp/hex.h>
+#include <cryptopp/modes.h>
+#include <cryptopp/sha.h>
+
+// Define a function that encrypts a file using a given password
+std::vector<unsigned char> encryptFile(const std::string& filePath, const std::string& password) {
+  // Read the file from the given file path
+  std::ifstream fileStream(filePath, std::ios::binary);
+  std::vector<unsigned char> fileContent((std::istreambuf_iterator<char>(fileStream)), std::istreambuf_iterator<char>());
+
+  // Create a random initialization vector for the encryption
+  CryptoPP::AutoSeededRandomPool prng;
+  std::vector<unsigned char> iv(CryptoPP::AES::BLOCKSIZE);
+  prng.GenerateBlock(iv.data(), iv.size());
+
+  // Create a new cipher using the given password and the initialization vector
+  CryptoPP::CFB_Mode<CryptoPP::AES>::Encryption cipher(reinterpret_cast<const unsigned char*>(password.data()), password.size(), iv.data());
+
+  // Encrypt the file content using the cipher
+  std::vector<unsigned char> encryptedFileContent(fileContent.size());
+  cipher.ProcessData(encryptedFileContent.data(), fileContent.data(), fileContent.size());
+
+  // Return an object containing the encrypted file content and the initialization vector
+  return encryptedFileContent;
+}
+
+// Define a function that decrypts a file using a given password and initialization vector
+std::string decryptFile(const std::vector<unsigned char>& fileContent, const std::string& password, const std::vector<unsigned char>& iv) {
+  // Create a new cipher using the given password and initialization vector
+  CryptoPP::CFB_Mode<CryptoPP::AES>::Decryption cipher(reinterpret_cast<const unsigned char*>(password.data()), password.size(), iv.data());
+
+  // Decrypt the file content using the cipher
+  std::vector<unsigned char> decryptedFileContent(fileContent.size());
+  cipher.ProcessData(decryptedFileContent.data(), fileContent.data(), fileContent.size());
+
+  // Return the decrypted file content as a string
+  return std::string(decryptedFileContent.begin(), decryptedFileContent.end());
+}
+
+// Define a function that uploads a file to the decentralized cloud
+std::string uploadFile(const std::string& filePath, const std::string& password) {
+  // Encrypt the file using the given password
+  std::vector<unsigned char> encryptedFile = encryptFile(filePath, password);
+
+  // Generate a unique ID for the file using the encrypted file content and the password
+  CryptoPP::SHA256 hash;
+  hash.Update(encryptedFile.data(), encryptedFile.size());
+  hash.Update(reinterpret_cast<const unsigned char*>(password.data()), password.size());
+  std::vector<unsigned char> file
